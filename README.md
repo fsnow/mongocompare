@@ -1,5 +1,13 @@
 # mongocompare
-Compares two MongoDB collections
+Compares two MongoDB collections. The dbHash command is the most accurate comparison of two collections, but is not feasible in certain situations because it can take a long time to run. 
+
+mongocompare makes the following checks:
+
+* document counts
+* indexes match
+* document content matches for a random sample of documents
+
+
 
 |   Flag     |  Argument Type  |  Description    |  Environment Variable    |
 | ---------- | --------------- | --------------- | ------------------------ |    
@@ -14,3 +22,8 @@ Compares two MongoDB collections
 | --targetPassword | string | target password | TARGET_PASSWORD |
 | --targetDatabase | string | target database | TARGET_DATABASE |
 | --targetCollName | string | target collection | TARGET_COLLECTION |
+
+
+Example with all command-line args:
+
+go run mongocompare.go --sourceURI "mongodb+srv://cluster1.orgcode.mongodb.net/db" --sourceDatabase=sample_airbnb --sourceCollName listingsAndReviews --sourceUsername myuser --sourcePassword mypassword --targetURI "mongodb+srv://cluster2.orgcode.mongodb.net/db" --targetDatabase sample_airbnb2 --targetCollName listingsAndReviews2 --targetUsername myuser --targetPassword mypassword --randomSampleSize 50
