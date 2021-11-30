@@ -19,23 +19,36 @@ import (
 
 func main() {
 	var sourceURI, sourceUsername, sourcePassword, sourceDatabase, sourceCollName string
-	stringFlag(&sourceURI, "sourceURI", "source connection string", "SOURCE_URI")
-	stringFlag(&sourceUsername, "sourceUsername", "source username", "SOURCE_USERNAME")
-	stringFlag(&sourcePassword, "sourcePassword", "source password", "SOURCE_PASSWORD")
-	stringFlag(&sourceDatabase, "sourceDatabase", "source database", "SOURCE_DATABASE")
-	stringFlag(&sourceCollName, "sourceCollName", "source collection", "SOURCE_COLLECTION")
+	flag.StringVar(&sourceURI, "sourceURI", "", "source connection string")
+	flag.StringVar(&sourceUsername, "sourceUsername", "", "source username")
+	flag.StringVar(&sourcePassword, "sourcePassword", "", "source password")
+	flag.StringVar(&sourceDatabase, "sourceDatabase", "", "source database")
+	flag.StringVar(&sourceCollName, "sourceCollName", "", "source collection")
 
 	var targetURI, targetUsername, targetPassword, targetDatabase, targetCollName string
-	stringFlag(&targetURI, "targetURI", "target connection string", "TARGET_URI")
-	stringFlag(&targetUsername, "targetUsername", "target username", "TARGET_USERNAME")
-	stringFlag(&targetPassword, "targetPassword", "target password", "TARGET_PASSWORD")
-	stringFlag(&targetDatabase, "targetDatabase", "target database", "TARGET_DATABASE")
-	stringFlag(&targetCollName, "targetCollName", "target collection", "TARGET_COLLECTION")
+	flag.StringVar(&targetURI, "targetURI", "", "target connection string")
+	flag.StringVar(&targetUsername, "targetUsername", "", "target username")
+	flag.StringVar(&targetPassword, "targetPassword", "", "target password")
+	flag.StringVar(&targetDatabase, "targetDatabase", "", "target database")
+	flag.StringVar(&targetCollName, "targetCollName", "", "target collection")
 
 	var randomSampleSize int
 	flag.IntVar(&randomSampleSize, "randomSampleSize", 100, "random sample size used for content comparison")
 
 	flag.Parse()
+
+	// get any values from environment variables that were not set on the command line
+	stringFromEnvVar(&sourceURI, "SOURCE_URI", "sourceURI")
+	stringFromEnvVar(&sourceUsername, "SOURCE_USERNAME", "sourceUsername")
+	stringFromEnvVar(&sourcePassword, "SOURCE_PASSWORD", "sourcePassword")
+	stringFromEnvVar(&sourceDatabase, "SOURCE_DATABASE", "sourceDatabase")
+	stringFromEnvVar(&sourceCollName, "SOURCE_COLLECTION", "sourceCollName")
+
+	stringFromEnvVar(&targetURI, "TARGET_URI", "targetURI")
+	stringFromEnvVar(&targetUsername, "TARGET_USERNAME", "targetUsername")
+	stringFromEnvVar(&targetPassword, "TARGET_PASSWORD", "targetPassword")
+	stringFromEnvVar(&targetDatabase, "TARGET_DATABASE", "targetDatabase")
+	stringFromEnvVar(&targetCollName, "TARGET_COLLECTION", "targetCollName")
 
 	// TODO: set the values from env vars here. As it is, they are being set as
 	// default values. The only problem with that is that the values get printed in --help.
@@ -78,13 +91,14 @@ func main() {
 	fmt.Println("")
 }
 
-func stringFlag(pstr *string, flagName string, helpMessage string, envVar string) {
-	envVal := os.Getenv(envVar)
-	defVal := ""
-	if len(envVal) > 0 {
-		defVal = envVal
+func stringFromEnvVar(pstr *string, envVar string, clArg string) {
+	if len(*pstr) == 0 {
+		*pstr = os.Getenv(envVar)
 	}
-	flag.StringVar(pstr, flagName, defVal, helpMessage)
+
+	if len(*pstr) == 0 {
+		fmt.Println("Set command-line arg " + clArg + " or environment variable " + envVar)
+	}
 }
 
 func checkCounts(sourceCollection *mongo.Collection, targetCollection *mongo.Collection) bool {
