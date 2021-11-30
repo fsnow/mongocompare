@@ -1,5 +1,5 @@
 # mongocompare
-Compares two MongoDB collections. The [dbHash command](https://docs.mongodb.com/manual/reference/command/dbHash/) is the most accurate comparison of two collections, but is not feasible in certain situations because it can take a long time to run. 
+Compares two MongoDB collections. The [dbHash command](https://docs.mongodb.com/manual/reference/command/dbHash/) is the most accurate comparison of two collections, but is not feasible in certain situations because it can take a long time to run. A common use case is after a database migration where the collection comparison needs to run in a short maintenance window as application connections are switched to the new cluster. (Hence the parameter naming with "source" and "target")
 
 mongocompare makes the following checks:
 
