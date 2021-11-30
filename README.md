@@ -27,3 +27,13 @@ mongocompare makes the following checks:
 Example with all command-line args:
 
 go run mongocompare.go --sourceURI "mongodb+srv://cluster1.orgcode.mongodb.net/db" --sourceDatabase=sample_airbnb --sourceCollName listingsAndReviews --sourceUsername myuser --sourcePassword mypassword --targetURI "mongodb+srv://cluster2.orgcode.mongodb.net/db" --targetDatabase sample_airbnb2 --targetCollName listingsAndReviews2 --targetUsername myuser --targetPassword mypassword --randomSampleSize 50
+
+
+Example where the usernames and passwords are stored as environment variables:
+
+export SOURCE_USERNAME=myuser
+export SOURCE_PASSWORD=mypassword
+export TARGET_USERNAME=myuser2
+export TARGET_PASSWORD=mypassword2
+
+go run mongocompare.go --sourceURI "mongodb+srv://cluster1.orgcode.mongodb.net/db" --sourceDatabase=sample_airbnb --sourceCollName listingsAndReviews --targetURI "mongodb+srv://cluster2.orgcode.mongodb.net/db" --targetDatabase sample_airbnb2 --targetCollName listingsAndReviews2 --randomSampleSize 50
