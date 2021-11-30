@@ -83,10 +83,24 @@ func main() {
 	checkCountsResult := checkCounts(sourceCollection, targetCollection)
 	indexCompareResult := compareIndexes(sourceCollection, targetCollection)
 	sampleContentResult := compareSampleContent(sourceCollection, targetCollection, randomSampleSize)
+
 	if checkCountsResult && indexCompareResult && sampleContentResult {
 		fmt.Println("Passed all validation checks")
+		os.Exit(0)
 	} else {
 		fmt.Println("Some validation checks failed. See above.")
+
+		exitVal := 0
+		if !checkCountsResult {
+			exitVal += 1
+		}
+		if !indexCompareResult {
+			exitVal += 2
+		}
+		if !sampleContentResult {
+			exitVal += 4
+		}
+		os.Exit(exitVal)
 	}
 	fmt.Println("")
 }
