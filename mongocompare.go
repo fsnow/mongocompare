@@ -264,6 +264,7 @@ func compareSampleContent(sourceCollection *mongo.Collection, targetCollection *
 	}
 	defer cursor.Close(context.TODO())
 	matches := 0
+	docCount := 0
 	for cursor.Next(context.TODO()) {
 		var doc bson.M
 		if err = cursor.Decode(&doc); err != nil {
@@ -274,6 +275,8 @@ func compareSampleContent(sourceCollection *mongo.Collection, targetCollection *
 		if err = targetCollection.FindOne(context.TODO(), bson.M{"_id": doc["_id"]}).Decode(&targetDoc); err != nil {
 			log.Fatal(err)
 		}
+
+		docCount++
 		if cmp.Equal(doc, targetDoc, cmp.AllowUnexported(primitive.Decimal128{})) {
 			matches++
 		} else {
@@ -281,7 +284,7 @@ func compareSampleContent(sourceCollection *mongo.Collection, targetCollection *
 		}
 	}
 
-	if matches < randomSampleSize {
+	if matches < docCount {
 		return false
 	}
 	return true
