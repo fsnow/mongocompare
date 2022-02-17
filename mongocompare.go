@@ -49,21 +49,21 @@ func main() {
 	flag.Parse()
 
 	// get any values from environment variables that were not set on the command line
-	stringFromEnvVar(&sourceURI, "SOURCE_URI", "sourceURI")
-	stringFromEnvVar(&sourceUsername, "SOURCE_USERNAME", "sourceUsername")
-	stringFromEnvVar(&sourcePassword, "SOURCE_PASSWORD", "sourcePassword")
-	stringFromEnvVar(&sourceDatabase, "SOURCE_DATABASE", "sourceDatabase")
-	stringFromEnvVar(&sourceCollName, "SOURCE_COLLECTION", "sourceCollName")
-	stringFromEnvVar(&sourceCAFile, "SOURCE_CA_FILE", "sourceCAFile")
-	stringFromEnvVar(&sourceTLSCertKeyFile, "SOURCE_CA_FILE", "sourceCAFile")
+	stringFromEnvVar(&sourceURI, "SOURCE_URI", "sourceURI", false)
+	stringFromEnvVar(&sourceUsername, "SOURCE_USERNAME", "sourceUsername", true)
+	stringFromEnvVar(&sourcePassword, "SOURCE_PASSWORD", "sourcePassword", true)
+	stringFromEnvVar(&sourceDatabase, "SOURCE_DATABASE", "sourceDatabase", false)
+	stringFromEnvVar(&sourceCollName, "SOURCE_COLLECTION", "sourceCollName", false)
+	stringFromEnvVar(&sourceCAFile, "SOURCE_CA_FILE", "sourceCAFile", true)
+	stringFromEnvVar(&sourceTLSCertKeyFile, "SOURCE_CA_FILE", "sourceCAFile", true)
 
-	stringFromEnvVar(&targetURI, "TARGET_URI", "targetURI")
-	stringFromEnvVar(&targetUsername, "TARGET_USERNAME", "targetUsername")
-	stringFromEnvVar(&targetPassword, "TARGET_PASSWORD", "targetPassword")
-	stringFromEnvVar(&targetDatabase, "TARGET_DATABASE", "targetDatabase")
-	stringFromEnvVar(&targetCollName, "TARGET_COLLECTION", "targetCollName")
-	stringFromEnvVar(&targetCAFile, "TARGET_CA_FILE", "targetCAFile")
-	stringFromEnvVar(&targetTLSCertKeyFile, "TARGET_CA_FILE", "targetCAFile")
+	stringFromEnvVar(&targetURI, "TARGET_URI", "targetURI", false)
+	stringFromEnvVar(&targetUsername, "TARGET_USERNAME", "targetUsername", true)
+	stringFromEnvVar(&targetPassword, "TARGET_PASSWORD", "targetPassword", true)
+	stringFromEnvVar(&targetDatabase, "TARGET_DATABASE", "targetDatabase", false)
+	stringFromEnvVar(&targetCollName, "TARGET_COLLECTION", "targetCollName", false)
+	stringFromEnvVar(&targetCAFile, "TARGET_CA_FILE", "targetCAFile", true)
+	stringFromEnvVar(&targetTLSCertKeyFile, "TARGET_CA_FILE", "targetCAFile", true)
 
 	sourceClientOps := options.Client().ApplyURI(sourceURI).SetAppName(mongoAppName())
 	if sourceUsername != "" && sourcePassword != "" {
@@ -154,11 +154,14 @@ func makeTLSConfig(caFile string, tlsCertKeyFile string, selfSigned bool) *tls.C
 	return tlsConfig
 }
 
-func stringFromEnvVar(pstr *string, envVar string, clArg string) {
+func stringFromEnvVar(pstr *string, envVar string, clArg string, optional bool) {
 	if len(*pstr) == 0 {
 		*pstr = os.Getenv(envVar)
 	}
 
+	if optional {
+		return
+	}
 	if len(*pstr) == 0 {
 		fmt.Println("Set command-line arg " + clArg + " or environment variable " + envVar)
 	}
