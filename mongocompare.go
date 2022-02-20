@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -19,45 +20,63 @@ import (
 )
 
 func main() {
-	var sourceURI, sourceUsername, sourcePassword, sourceDatabase, sourceCollName string
+	var sourceURI, sourceUsername, sourcePassword, sourceDatabase, sourceCollName, sourceCAFile, sourceTLSCertKeyFile string
 	flag.StringVar(&sourceURI, "sourceURI", "", "source connection string")
 	flag.StringVar(&sourceUsername, "sourceUsername", "", "source username")
 	flag.StringVar(&sourcePassword, "sourcePassword", "", "source password")
 	flag.StringVar(&sourceDatabase, "sourceDatabase", "", "source database")
 	flag.StringVar(&sourceCollName, "sourceCollName", "", "source collection")
+	flag.StringVar(&sourceCAFile, "sourceCAFile", "", "source CA file")
+	flag.StringVar(&sourceTLSCertKeyFile, "sourceTLSCertKeyFile", "", "source TLS certificate key file")
 
-	var targetURI, targetUsername, targetPassword, targetDatabase, targetCollName string
+	var targetURI, targetUsername, targetPassword, targetDatabase, targetCollName, targetCAFile, targetTLSCertKeyFile string
 	flag.StringVar(&targetURI, "targetURI", "", "target connection string")
 	flag.StringVar(&targetUsername, "targetUsername", "", "target username")
 	flag.StringVar(&targetPassword, "targetPassword", "", "target password")
 	flag.StringVar(&targetDatabase, "targetDatabase", "", "target database")
 	flag.StringVar(&targetCollName, "targetCollName", "", "target collection")
+	flag.StringVar(&targetCAFile, "targetCAFile", "", "target CA file")
+	flag.StringVar(&targetTLSCertKeyFile, "targetTLSCertKeyFile", "", "target TLS certificate key file")
 
 	var randomSampleSize, firstIdsCount, lastIdsCount int
 	flag.IntVar(&randomSampleSize, "randomSampleSize", 100, "random sample size used for content comparison")
 	flag.IntVar(&firstIdsCount, "firstIdsCount", 100, "number of _id values to compare from beginning")
 	flag.IntVar(&lastIdsCount, "lastIdsCount", 100, "number of _id values to compare from end")
 
+	var selfSigned bool
+	flag.BoolVar(&selfSigned, "selfSigned", false, "using self signed certs for TLS")
+
 	flag.Parse()
 
 	// get any values from environment variables that were not set on the command line
-	stringFromEnvVar(&sourceURI, "SOURCE_URI", "sourceURI")
-	stringFromEnvVar(&sourceUsername, "SOURCE_USERNAME", "sourceUsername")
-	stringFromEnvVar(&sourcePassword, "SOURCE_PASSWORD", "sourcePassword")
-	stringFromEnvVar(&sourceDatabase, "SOURCE_DATABASE", "sourceDatabase")
-	stringFromEnvVar(&sourceCollName, "SOURCE_COLLECTION", "sourceCollName")
+	stringFromEnvVar(&sourceURI, "SOURCE_URI", "sourceURI", false)
+	stringFromEnvVar(&sourceUsername, "SOURCE_USERNAME", "sourceUsername", true)
+	stringFromEnvVar(&sourcePassword, "SOURCE_PASSWORD", "sourcePassword", true)
+	stringFromEnvVar(&sourceDatabase, "SOURCE_DATABASE", "sourceDatabase", false)
+	stringFromEnvVar(&sourceCollName, "SOURCE_COLLECTION", "sourceCollName", false)
+	stringFromEnvVar(&sourceCAFile, "SOURCE_CA_FILE", "sourceCAFile", true)
+	stringFromEnvVar(&sourceTLSCertKeyFile, "SOURCE_CA_FILE", "sourceCAFile", true)
 
-	stringFromEnvVar(&targetURI, "TARGET_URI", "targetURI")
-	stringFromEnvVar(&targetUsername, "TARGET_USERNAME", "targetUsername")
-	stringFromEnvVar(&targetPassword, "TARGET_PASSWORD", "targetPassword")
-	stringFromEnvVar(&targetDatabase, "TARGET_DATABASE", "targetDatabase")
-	stringFromEnvVar(&targetCollName, "TARGET_COLLECTION", "targetCollName")
+	stringFromEnvVar(&targetURI, "TARGET_URI", "targetURI", false)
+	stringFromEnvVar(&targetUsername, "TARGET_USERNAME", "targetUsername", true)
+	stringFromEnvVar(&targetPassword, "TARGET_PASSWORD", "targetPassword", true)
+	stringFromEnvVar(&targetDatabase, "TARGET_DATABASE", "targetDatabase", false)
+	stringFromEnvVar(&targetCollName, "TARGET_COLLECTION", "targetCollName", false)
+	stringFromEnvVar(&targetCAFile, "TARGET_CA_FILE", "targetCAFile", true)
+	stringFromEnvVar(&targetTLSCertKeyFile, "TARGET_CA_FILE", "targetCAFile", true)
 
-	sourceCredential := options.Credential{
-		Username: sourceUsername,
-		Password: sourcePassword,
+	sourceClientOps := options.Client().ApplyURI(sourceURI).SetAppName(mongoAppName())
+	if sourceUsername != "" && sourcePassword != "" {
+		sourceCredential := options.Credential{
+			Username: sourceUsername,
+			Password: sourcePassword,
+		}
+		sourceClientOps = sourceClientOps.SetAuth(sourceCredential)
 	}
-	sourceClientOps := options.Client().ApplyURI(sourceURI).SetAuth(sourceCredential).SetAppName(mongoAppName())
+	if sourceCAFile != "" || sourceTLSCertKeyFile != "" {
+		sourceTLS := makeTLSConfig(sourceCAFile, sourceTLSCertKeyFile, selfSigned)
+		sourceClientOps = sourceClientOps.SetTLSConfig(sourceTLS)
+	}
 	sourceClient, err := mongo.Connect(context.TODO(), sourceClientOps)
 	if err != nil {
 		log.Fatal(err)
@@ -65,12 +84,18 @@ func main() {
 	sourceDB := sourceClient.Database(sourceDatabase)
 	sourceCollection := sourceDB.Collection(sourceCollName)
 
-	var targetCredential = options.Credential{
-		Username: targetUsername,
-		Password: targetPassword,
+	targetClientOps := options.Client().ApplyURI(targetURI).SetAppName(mongoAppName())
+	if targetUsername != "" && targetPassword != "" {
+		targetCredential := options.Credential{
+			Username: targetUsername,
+			Password: targetPassword,
+		}
+		targetClientOps = targetClientOps.SetAuth(targetCredential)
 	}
-	targetClientOps := options.Client().ApplyURI(targetURI).SetAuth(targetCredential).SetAppName(mongoAppName())
-
+	if targetCAFile != "" || targetTLSCertKeyFile != "" {
+		targetTLS := makeTLSConfig(targetCAFile, targetTLSCertKeyFile, selfSigned)
+		targetClientOps = targetClientOps.SetTLSConfig(targetTLS)
+	}
 	targetClient, err := mongo.Connect(context.TODO(), targetClientOps)
 	if err != nil {
 		log.Fatal(err)
@@ -113,11 +138,30 @@ func main() {
 	fmt.Println("")
 }
 
-func stringFromEnvVar(pstr *string, envVar string, clArg string) {
+// Create a tls config using user flags
+func makeTLSConfig(caFile string, tlsCertKeyFile string, selfSigned bool) *tls.Config {
+	configMap := map[string]interface{}{
+		"tlsCertificateKeyFile": tlsCertKeyFile,
+		"tlsCAFile":             caFile,
+	}
+	tlsConfig, err := options.BuildTLSConfig(configMap)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if selfSigned {
+		tlsConfig.InsecureSkipVerify = true
+	}
+	return tlsConfig
+}
+
+func stringFromEnvVar(pstr *string, envVar string, clArg string, optional bool) {
 	if len(*pstr) == 0 {
 		*pstr = os.Getenv(envVar)
 	}
 
+	if optional {
+		return
+	}
 	if len(*pstr) == 0 {
 		fmt.Println("Set command-line arg " + clArg + " or environment variable " + envVar)
 	}
